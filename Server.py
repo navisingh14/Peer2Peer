@@ -1,13 +1,13 @@
 #/bin/sh
 
-from socket import *
+import socket
 import os
 import threading
 import thread
 import pickle
 
 serverPort = 7767
-serverSocket = socket(AF_INET, SOCK_STREAM)
+serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 serverSocket.bind(('',serverPort))
 serverSocket.listen(1)
 print 'the server is ready to receive'
@@ -48,6 +48,8 @@ def new_client_thread(connSock, addr):
         while True:
             data = pickle.loads(connSock.recv(4096))
             print data
+            connSock.send("hello1")
+            connSock.send("eh")
             print len(data)
             if(len(data) == 0):
                 del_client_from_active_peers(addr[0])
@@ -60,6 +62,10 @@ def new_client_thread(connSock, addr):
     except EOFError:
         print 'closed'
         connectionSocket.close()
+    except socket.error as error:
+        print 'ungraceful exit'
+        connectionSocket.close()
+        
 
 ''' upload_port = data[0]
     rfc_num = data[1]
