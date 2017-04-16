@@ -16,10 +16,53 @@ def setupUploadServer(port):
     uploadSocket.listen(5)
     while True:
         connectionSocket, addr = uploadSocket.accept()
-        RFC = connectionSocket.recv(4096)
+        data = connectionSocket.recv(4096)
         #get the data from the rfc
+        respondToRequest(connectionSocket,data):
         #connectionSocket.send(data)
-        
+
+
+
+def respondToRequest(connectionSocket, data):
+    #check for version of p2p
+    #return 505
+
+    #check for malformation:
+    #return 400
+    
+    filename = "rfc"+str(rfc_num)+".txt"
+
+    current_time = time.strftime("%a, %d %b %Y %X %Z", time.localtime())
+    os = platform.system()
+    current_path = os.getcwd()
+    if os == "Windows":
+        filename = current_path + "\\rfc\\" + filename + "*"
+    else:
+        filename = current_path + "/rfc/" + filename + "*"
+    if glob.glob(filename) == []:
+        status = "404"
+        phrase = "Not Found"
+        request_body = "P2P-CI/1.0 "+ status + " "+ phrase + "\n"\
+                    "Date:" + current_time + "\n"\
+                    "OS: "+str(OS)+"\n"
+        connectionSocket.send(pickle.dumps(request_body))
+    else:
+        status = "200"
+        phrase = "OK"
+        File = glob.glob(filename)
+        txt = open(File[0])
+        data = txt.read()
+        last_modified = time.ctime(os.path.getmtime(filename))
+        content_length = os.path.getsize(filename)
+        request_body = ["P2P-CI/1.0 "+ status + " "+ phrase + "\n"\
+                  "Date: " + current_time + "\n"\
+                  "OS: " + str(OS)+"\n"\
+                  "Last-Modified: " + last_modified + "\n"\
+                  "Content-Length: " + str(content_length) + "\n"\
+                  "Content-Type: text/text \n", str(data)]
+        connectionSocket.send(pickle.dumps(request_body))      
+    return message
+    
     
 
 def getUploadSocket():
