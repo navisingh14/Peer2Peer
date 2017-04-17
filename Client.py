@@ -18,7 +18,7 @@ def setupUploadServer(port):
         connectionSocket, addr = uploadSocket.accept()
         data = connectionSocket.recv(4096)
         #get the data from the rfc
-        respondToRequest(connectionSocket,data):
+        respondToRequest(connectionSocket,data)
         #connectionSocket.send(data)
 
 
@@ -30,7 +30,7 @@ def respondToRequest(connectionSocket, data):
     #check for malformation:
     #return 400
     
-    filename = "rfc"+str(rfc_num)+".txt"
+    filename = "RFC_"+str(rfc_num)
 
     current_time = time.strftime("%a, %d %b %Y %X %Z", time.localtime())
     os = platform.system()
@@ -70,22 +70,25 @@ def getUploadSocket():
     return port
 
 
-def get(rfc_num, rfc_title, download_host):
+def get(rfc_num, rfc_title, download_host,download_port):
     os = platform.system()
-    request_body = "GET RFC "+str(rfc_num)+" P2P-CI/1.0 \n"\
+    request_body = "GET RFC "+str(rfc_num)+" P2P-CI/1.0\n"\
               "Host: "+str(download_host)+"\n"\
               "OS: "+str(os)+"\n"
     downloadSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     downloadSocket.connect((download_host, int(download_port)))
     downloadSocket.send(request_body)
     #get response back from client
-    #received_data= pickle.loads(downloadSocket.recv(4096)
+    received_data= downloadSocket.recv(4096)
     if os == 'Windows':
         filename = os.getcwd() + "\\rfc\\RFC_"+rfc_num+"_"+rfc_title+".txt"
     else:
         filename = os.getcwd() + "/rfc/RFC_"+rfc_num+"_"+rfc_title+".txt"
-    with open(filename, 'w') as f:
+    f = open(filename, 'wb')
+    while(received_data):
         f.write(received_data)
+        received_data = downloadSocket.recv(4096)
+    f.close()
     downloadSocket.close()
     
 ''' s.send(bytes(data, 'utf-8'))
@@ -112,54 +115,68 @@ def get(rfc_num, rfc_title, download_host):
 
 
 
-
+def lookup(clientSocket, rfc_num, rfc_title):
+    request_body = "LOOKUP RFC " + str(rfc_num)+" P2P-CI/1.0\n"\
+              "Host: " + str(host)+"\n"\
+              "Port: " + str(port)+"\n"\
+              "Title: " + str(rfc_title)+"\n"
+    clientSocket.send(pickle.dumps(request_body))
+    available_peers = (clientSocket.recv(4096))
+    print available_peers
 
 def add(clientSocket, rfc_num, rfc_title):
-    request_body = "ADD RFC " + str(rfc_num)+" P2P-CI/1.0 \n"\
+    request_body = "ADD RFC " + str(rfc_num)+" P2P-CI/1.0\n"\
               "Host: " + str(host)+"\n"\
               "Port: " + str(port)+"\n"\
               "Title: " + str(rfc_title)+"\n"
     data = pickle.dumps(request_body)
     clientSocket.send(data)
-    idata1 = clientSocket.recv(1024)
-    idata2 = clientSocket.recv(1024)
-    print idata1
-    print idata2    
-
-def lookup(clientSocket, rfc_num, rfc_title):
-    request_body = "LOOKUP RFC " + str(rfc_num)+" P2P-CI/1.0 \n"\
-              "Host: " + str(host)+"\n"\
-              "Port: " + str(port)+"\n"\
-              "Title: " + str(rfc_title)+"\n"
-    data = pickle.dumps(lookup(rfc_num, rfc_title))
-    clientSocket.send(data)
-    available_peers = pickle.loads(clientSocket.recv(4096))
 
 def list_rfc(clientSocket):
-    request_body = "LIST ALL P2P-CI/1.0 \n"\
+    request_body = "LIST ALL P2P-CI/1.0\n"\
               "Host: "+str(host)+"\n"\
               "Port: "+str(port)+"\n"
     data = pickle.dumps(request_body)
     clientSocket.send(data)
+    response = clientSocket.recv(4096)
+    print response
+ 
 
+def local_rfcs():
+    local_rfc = {}
+    cwd = os.getcwd()
+    if platform.system() == 'Windows':
+        for each_rfc in glob.glob(cwd + "\\rfc\\RFC*.txt"):
+            rfc = each_rfc.split("_")
+            local_rfc[rfc[1]]=rfc[2]
+    else:
+        for each_rfc in glob.glob(cwd + "/rfc/RFC*.txt"):
+            rfc = each_rfc.split("_")
+            local_rfc[rfc[1]]=rfc[2]
+    return local_rfc
+    
+
+def addLocalRFC(port, clientSocket):
+    available_rfcs = local_rfcs()
+    for num, title in available_rfcs.iteritems():
+        add(clientSocket, num, available_rfcs[str(num)])
+        response = clientSocket.recv(4096)
+        print response
+    
 
 #Contacting Server
 def ContactServer(port, clientSocket):
     try:
         user_input = raw_input("> Enter the command: ADD, LIST, LOOKUP, EXIT:\n")
         if user_input == 'ADD':
-            cwd = os.getcwd();
-            if platform.system() == 'Windows':
-                print "List of available RFCs on local system"
-                for each_rfc in glob.glob(cwd + "\\rfc\\*.pdf"):
-                    print each_rfc
-            else:
-                print "List of available RFCs on local system"
-                for each_rfc in glob.glob(cwd + "/rfc/*.pdf"):
-                    print each_rfc
+            local_rfc = local_rfcs()
+            print "List of available RFCs on local system"
+            for num, title in local_rfc.iteritems():
+                print num, title
             rfc_num = input("Enter the RFC number: ")
-            rfc_title = raw_input("Enter the RFC title: ")
-            add(clientSocket, rfc_num, rfc_title)
+            add(clientSocket, rfc_num, local_rfc[str(rfc_num)])
+            response = (clientSocket.recv(4096))
+            print response
             ContactServer(port, clientSocket)
         elif user_input == 'LIST':
             list_rfc(clientSocket)
@@ -191,9 +208,6 @@ def ContactServer(port, clientSocket):
     print received_data'''
 
 
-print socket.gethostname();
-
-
 if __name__ == '__main__':
     port = getUploadSocket()
     print port
@@ -203,5 +217,10 @@ if __name__ == '__main__':
     clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     host = socket.gethostname()
     clientSocket.connect((serverName, serverPort))
+    data = pickle.dumps([port])
+    print data
+    clientSocket.send(data)
+    print clientSocket.recv(1024)
+    addLocalRFC(port, clientSocket)
     ContactServer(port, clientSocket)
  
