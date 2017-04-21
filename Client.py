@@ -5,9 +5,9 @@ import pickle
 import os
 import glob
 import platform
+import time
 
 #Setting up UploadServer
-
 
 
 def setupUploadServer(port):
@@ -16,52 +16,79 @@ def setupUploadServer(port):
     uploadSocket.listen(5)
     while True:
         connectionSocket, addr = uploadSocket.accept()
-        data = connectionSocket.recv(4096)
-        #get the data from the rfc
-        respondToRequest(connectionSocket,data)
-        #connectionSocket.send(data)
+        request = connectionSocket.recv(4096)
+        respondToRequest(connectionSocket,request)
+
+def checkValidity(data):
+    global RFC
+    analyse = data.replace("\n"," ").split(" ")
+    rfc_num = analyse[2]
+    os = platform.system()
+    current_path = os.getcwd()
+    if os == "Windows":
+        filename = current_path + "\\rfc\\" + rfc_num + "*"
+    else:
+        filename = current_path + "/rfc/" + rfc_num + "*"
+    if(data.find('P2P-CI/1.0') == -1):
+        status = '505'
+        phrase = 'P2P-CI Version Not Supported'
+    elif(get_invalid(analyse)): #check for 400
+        status = '400'
+        phrase = 'Bad Request'
+    elif(glob.glob(filename)==[]):
+        status = '404'
+        phrase = 'Not Found'
+    else:
+        status = '200'
+        phrase = 'OK'
+    response_header = "P2P-CI/1.0 " + status + " " + phrase + "\n"
+    return response_header, status
+
+def get_invalid(data):
+    answer = False
+    compare = {0:'GET',
+               1:'RFC',
+               3:'P2P-CI/1.0',
+               4:'Host:',
+               5:'OS:'
+               }
+    for key, value in compare.iteritems():
+        if(data[key] != value):
+            answer = True
+            break
+    return answer
 
 
 
 def respondToRequest(connectionSocket, data):
-    #check for version of p2p
-    #return 505
 
-    #check for malformation:
-    #return 400
-    
-    filename = "RFC_"+str(rfc_num)
-
+    response_header, status = checkValidity(data)
     current_time = time.strftime("%a, %d %b %Y %X %Z", time.localtime())
     os = platform.system()
-    current_path = os.getcwd()
-    if os == "Windows":
-        filename = current_path + "\\rfc\\" + filename + "*"
+    if status == '505' or status == '400' or status == '404':
+        response = response_header + "Date:" + current_time + "\n" + "OS: "+str(OS)+"\n"
+        connectionSocket.send(request_body)
     else:
-        filename = current_path + "/rfc/" + filename + "*"
-    if glob.glob(filename) == []:
-        status = "404"
-        phrase = "Not Found"
-        request_body = "P2P-CI/1.0 "+ status + " "+ phrase + "\n"\
-                    "Date:" + current_time + "\n"\
-                    "OS: "+str(OS)+"\n"
-        connectionSocket.send(pickle.dumps(request_body))
-    else:
-        status = "200"
-        phrase = "OK"
+        os = platform.system()
+        current_path = os.getcwd()
+        if os == "Windows":
+            filename = current_path + "\\rfc\\" + rfc_num + "*"
+        else:
+            filename = current_path + "/rfc/" + rfc_num + "*"
         File = glob.glob(filename)
-        txt = open(File[0])
-        data = txt.read()
-        last_modified = time.ctime(os.path.getmtime(filename))
-        content_length = os.path.getsize(filename)
-        request_body = ["P2P-CI/1.0 "+ status + " "+ phrase + "\n"\
-                  "Date: " + current_time + "\n"\
-                  "OS: " + str(OS)+"\n"\
+        last_modified = time.ctime(os.path.getmtime(File[0]))
+        content_length = os.path.getsize(File[0])
+        response = response_header + "Date:" + current_time + "\n" + "OS: "+str(OS)+"\n"\
                   "Last-Modified: " + last_modified + "\n"\
                   "Content-Length: " + str(content_length) + "\n"\
-                  "Content-Type: text/text \n", str(data)]
-        connectionSocket.send(pickle.dumps(request_body))      
-    return message
+                  "Content-Type: text/text \n"
+        connectionSocket.send(request_body)        
+        txt = open(File[0], 'rb')
+        line = txt.read(1024)
+        while(line):
+            connectionSocket.send(line)
+            line = txt.read(1024)        
+    connectionSocket.close()
     
     
 
@@ -80,15 +107,18 @@ def get(rfc_num, rfc_title, download_host,download_port):
     downloadSocket.send(request_body)
     #get response back from client
     received_data= downloadSocket.recv(4096)
+    print received_data
     if os == 'Windows':
         filename = os.getcwd() + "\\rfc\\RFC_"+rfc_num+"_"+rfc_title+".txt"
     else:
         filename = os.getcwd() + "/rfc/RFC_"+rfc_num+"_"+rfc_title+".txt"
-    f = open(filename, 'wb')
-    while(received_data):
-        f.write(received_data)
-        received_data = downloadSocket.recv(4096)
-    f.close()
+    if(received_data.find("200 OK") != -1):
+        f = open(filename, 'wb')
+        while(received_data):
+            f.write(received_data)
+            received_data = downloadSocket.recv(4096)
+        f.close()
+        print 'File received successfully'
     downloadSocket.close()
     
 ''' s.send(bytes(data, 'utf-8'))

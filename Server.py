@@ -50,7 +50,7 @@ def add_invalid(data):
                3:'P2P-CI/1.0',
                4:'Host:',
                6:'Port:',
-               7:'Title:'
+               8:'Title:'
                }
     for key, value in compare.iteritems():
         if(data[key] != value):
@@ -67,7 +67,7 @@ def lookup_invalid(data):
                3:'P2P-CI/1.0',
                4:'Host:',
                6:'Port:',
-               7:'Title:'
+               8:'Title:'
                }
     for key, value in compare.iteritems():
         if(data[key] != value):
@@ -94,12 +94,12 @@ def list_invalid(data):
 
 def checkValidity(data):
     global RFC
-    analyse = data.split(" ")
+    analyse = data.replace("\n"," ").split(" ")
     #check for 505
     if(data.find('P2P-CI/1.0') == -1):
         status = '505'
         phrase = 'P2P-CI Version Not Supported'
-    elif((not add_invalid(analyse)) or (not list_invalid(analyse)) or (not lookup_invalid(analyse))): #check for 400
+    elif((add_invalid(analyse)) and (list_invalid(analyse)) and (lookup_invalid(analyse))): #check for 400
         status = '400'
         phrase = 'Bad Request'
     elif(analyse[0] == 'LOOKUP' and (analyse[2] not in RFC)):
