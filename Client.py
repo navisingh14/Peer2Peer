@@ -2,6 +2,8 @@ import socket
 import random
 import thread
 import pickle
+import sys
+import getopt
 import os
 import glob
 import platform
@@ -113,8 +115,12 @@ def get(rfc_num, rfc_title, download_host,download_port):
     received_data= downloadSocket.recv(4096)
     print received_data
     if OS == 'Windows':
+        if not (os.path.isdir(os.getcwd()+"\\rfc")):
+            os.makedirs(os.getcwd()+"\\rfc")
         filename = os.getcwd() + "\\rfc\\RFC_"+str(rfc_num)+"_"+rfc_title+".txt"
     else:
+        if not (os.path.isdir(os.getcwd()+"/rfc")):
+            os.makedirs(os.getcwd()+"/rfc")
         filename = os.getcwd() + "/rfc/RFC_"+str(rfc_num)+"_"+rfc_title+".txt"
     if(received_data.find("200 OK") != -1):
         received_data = downloadSocket.recv(4096)
@@ -241,20 +247,19 @@ def ContactServer(port, clientSocket):
     except Exception, e:
         print type(e)
         print e
-'''    rfc_num = [4]
-    rfc_title = ['hello']
-    data= pickle.dumps([port,rfc_num, rfc_title]) 
-    clientSocket.send(data)
-    received_data = clientSocket.recv(4096)
-    print received_data'''
 
 
 if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        print 'usage: ./client <server-ip> <server-port>'
+        sys.exit()
+    opts,args = getopt.getopt(sys.argv[1:], "d:p")
+    print type(int(args[1]))
     port = getUploadSocket()
     print port
     thread.start_new_thread(setupUploadServer, (port,))
-    serverName = '127.0.0.1'
-    serverPort = 5678
+    serverName = args[0]
+    serverPort = int(args[1])
     clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     host = socket.gethostname()
     clientSocket.connect((serverName, serverPort))
