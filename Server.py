@@ -1,4 +1,4 @@
-#/bin/sh
+#!/usr/bin/python
 
 import socket
 import os
@@ -6,7 +6,7 @@ import threading
 import thread
 import pickle
 
-serverPort = 5678
+serverPort = 7734
 serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 serverSocket.bind(('',serverPort))
 serverSocket.listen(1)

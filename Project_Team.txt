@@ -1,2 +1,10 @@
-Navjot Singh - nsingh9
-Li Shi       - lshi7
+Li Shi		- lshi7@ncsu.edu
+Navjot Singh	- nsingh9@ncsu.edu
+
+Instructions:
+
+Server:
+	Command: python Server.py
+
+Client:
+	command: python Client.py <server-ip> <port-ip>
