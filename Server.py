@@ -113,14 +113,21 @@ def checkValidity(data):
 
 
 
-def list_response(connSock, response_header):
+def list_response(connSock, response_header, peer_name):
     global RFC
     global activePeers
+    exists = False
     response_body = response_header
     for rfc_num, value in RFC.iteritems():
         for each_peer in value[1]:
-            response_body = response_body + "RFC " + str(rfc_num) + " " + str(value[0]) + " " + str(each_peer)+ " " + str(activePeers[each_peer]) + "\n"
-    connSock.send(response_body)
+            if str(each_peer) != str(peer_name):
+                exists = True
+                response_body = response_body + "RFC " + str(rfc_num) + " " + str(value[0]) + " " + str(each_peer)+ " " + str(activePeers[each_peer]) + "\n"
+    if exists:
+        connSock.send(response_body)
+    else:
+        response_body = response_body + "No active users right now"
+        connSock.send(response_body)        
     pass
     
 def add_response(connSock, data, response_header, upload_port, peer_name):
@@ -176,7 +183,7 @@ def new_client_thread(connSock, addr):
                     print 'LOOKUP'
                     lookup_response(connSock, response_header, rfc_num)
                 elif request == 'LIST':
-                    list_response(connSock, response_header)
+                    list_response(connSock, response_header, peer_name)
             print len(data)
             if(len(data) == 0):
                 del_client_from_active_peers(addr[0])
